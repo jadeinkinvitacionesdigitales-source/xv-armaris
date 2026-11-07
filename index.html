@@ -213,6 +213,9 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
 .icebtn{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;padding:15px 30px;border-radius:40px;border:1.5px solid #fff;background:linear-gradient(135deg,#7cc4ff,#2f74c8 55%,#1d4f91);color:#fff;font-family:var(--deco);font-weight:700;font-size:14px;letter-spacing:.06em;white-space:nowrap;padding-left:24px;padding-right:24px;cursor:pointer;box-shadow:0 0 18px rgba(120,190,255,.7),0 6px 16px rgba(10,40,100,.35)}
 .icebtn svg{width:18px;height:18px}
 .icebtn:active{transform:scale(.96)}
+.fmsg{min-height:1.2em;margin-top:10px;font-size:17px;font-style:italic;color:var(--royal)}
+.fmsg.err{color:#b3261e}
+.icebtn[disabled]{opacity:.7;pointer-events:none}
 .peek.olaf2{width:84px;right:-10px;top:-58px;transform:rotate(8deg)}
 /* Reveal */
 .rv{opacity:0;transform:translateY(28px);transition:opacity 1s ease,transform 1s ease}
@@ -352,7 +355,8 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
       <p class="sub">¿Qué canción no puede faltar en mi fiesta? Ayúdame a armar la playlist perfecta.</p>
       <form id="songForm">
         <label class="ifield"><span>Canción y artista</span><input name="cancion" required placeholder="Ej.: Vivir mi vida – Marc Anthony"></label>
-        <button class="icebtn" type="submit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13h-2V7.4l-8 1.3V18a3 3 0 1 1-2-2.8z"/></svg>Sugerir canción</button>
+        <button class="icebtn" type="submit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13h-2V7.4l-8 1.3V18a3 3 0 1 1-2-2.8z"/></svg><span>Sugerir canción</span></button>
+        <p class="fmsg" id="songMsg" role="status"></p>
       </form>
     </div>
 
@@ -366,11 +370,16 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
       <form id="rsvpForm">
         <label class="ifield"><span>Nombre completo</span><input name="nombre" required autocomplete="name" placeholder="Escribe tu nombre"></label>
         <label class="ifield"><span>¿Podrás asistir?</span>
-          <select name="asis" required><option value="" disabled selected>Selecciona una opción</option><option>Sí, ahí estaré</option><option>No podré asistir</option></select></label>
-        <label class="ifield"><span>Número de personas</span>
+          <select name="asis" required><option value="" disabled selected>Selecciona una opción</option><option value="si">Sí, ahí estaré</option><option value="no">No podré asistir</option></select></label>
+        <label class="ifield" id="persWrap"><span id="persLbl">Número de personas</span>
           <select name="pers"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
-        <button class="icebtn" type="submit">✦ Confirmar asistencia</button>
+        <button class="icebtn" type="submit"><span>✦ Confirmar asistencia</span></button>
+        <p class="fmsg" id="rsvpMsg" role="status"></p>
       </form>
+      <div id="rsvpThanks" hidden>
+        <p class="cta" style="margin-top:4px">¡Gracias!</p>
+        <p class="sub" id="thanksTxt"></p>
+      </div>
     </div>
   </section>
 
@@ -395,14 +404,35 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
   // ====== Datos del evento ======
   const EMAIL = "Armaris0555@gmail.com";
   const EVENTO = new Date("2026-11-27T20:30:00-05:00"); // hora de Panamá
+  // URL de la app web de Google Apps Script (panel). Vacía = las respuestas se envían por correo.
+  const API = "";
 
   const $ = s => document.querySelector(s);
 
-  // ====== Personalización por enlace: ?invitado=Nombre&mesa=5 ======
+  // ====== Invitado del enlace personalizado ======
+  // Enlaces del panel: ?inv=… (id, nombre, mesa, puestos). También acepta ?invitado=Nombre&mesa=5
   const q = new URLSearchParams(location.search);
-  const inv = q.get("invitado"), mesa = q.get("mesa");
+  const guest = (() => {
+    try {
+      const raw = q.get("inv");
+      if (raw) {
+        const g = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/")))));
+        if (g.n) return { id: String(g.i || "").slice(0, 20), nombre: String(g.n).slice(0, 120), mesa: String(g.m || "").slice(0, 10), puestos: Math.max(1, Math.min(50, parseInt(g.p, 10) || 0)) || 0 };
+      }
+    } catch (_) {}
+    const n = q.get("invitado");
+    return n ? { id: "", nombre: n.slice(0, 120), mesa: (q.get("mesa") || "").slice(0, 10), puestos: 0 } : (q.get("mesa") ? { id: "", nombre: "", mesa: q.get("mesa").slice(0, 10), puestos: 0 } : null);
+  })();
+  const inv = guest && guest.nombre, mesa = guest && guest.mesa;
   if (inv) $("#hello").textContent = "Querido(a) " + inv + ", te invito a celebrar";
   if (mesa) { $("#mesaN").textContent = mesa; $("#mesaTxt").textContent = inv ? inv + ", esta será tu mesa." : "Esta será tu mesa."; }
+  if (inv) $("#rsvpForm [name=nombre]").value = inv;
+  if (guest && guest.puestos) {
+    const sel = $("#rsvpForm [name=pers]");
+    sel.innerHTML = Array.from({ length: guest.puestos }, (_, i) => `<option>${i + 1}</option>`).join("");
+    sel.value = guest.puestos;
+    $("#persLbl").textContent = `Número de personas (máx. ${guest.puestos})`;
+  }
 
   // ====== Sobre ======
   const intro = $("#intro"), vid = $("#sobre"), audio = $("#audio"), mbtn = $("#music");
@@ -450,17 +480,45 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
   }
   tick(); setInterval(tick, 1000);
 
-  // ====== Playlist y Confirmación (llegan al correo) ======
+  // ====== Playlist y Confirmación ======
+  // Con API las respuestas se guardan en Google Sheets y se ven en panel.html; sin API se envían por correo.
   const mail = (sub, body) => location.href = "mailto:" + EMAIL + "?subject=" + encodeURIComponent(sub) + "&body=" + encodeURIComponent(body);
+  const send = data => fetch(API, { method: "POST", body: JSON.stringify(data) })
+    .then(r => r.json()).then(r => { if (!r.ok) throw new Error(r.error); });
+  const busy = (btn, on, txt) => { btn.disabled = on; if (txt) btn.querySelector("span").textContent = txt; };
+  const persWrap = $("#persWrap");
+  $("#rsvpForm [name=asis]").addEventListener("change", e => persWrap.style.display = e.target.value === "no" ? "none" : "");
+
   $("#songForm").addEventListener("submit", e => {
-    e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
-    mail("Playlist XV Armaris", "Sugerencia de canción: " + v.cancion + (inv ? "\nDe: " + inv : ""));
-    e.target.reset();
+    e.preventDefault(); const f = e.target, v = Object.fromEntries(new FormData(f)), msg = $("#songMsg"), btn = f.querySelector("button");
+    const cancion = v.cancion.trim(); if (!cancion) return;
+    msg.className = "fmsg"; msg.textContent = "";
+    if (!API) { mail("Playlist XV Armaris", "Sugerencia de canción: " + cancion + (inv ? "\nDe: " + inv : "")); f.reset(); return; }
+    busy(btn, true, "Enviando…");
+    send({ action: "song", id: guest ? guest.id : "", nombre: inv || $("#rsvpForm [name=nombre]").value.trim(), cancion })
+      .then(() => { f.reset(); msg.textContent = "¡Gracias! Tu canción ya está en la lista 🎶"; })
+      .catch(() => { msg.className = "fmsg err"; msg.textContent = "No se pudo enviar. Inténtalo de nuevo en un momento."; })
+      .finally(() => busy(btn, false, "Sugerir canción"));
   });
+
   $("#rsvpForm").addEventListener("submit", e => {
-    e.preventDefault(); const v = Object.fromEntries(new FormData(e.target));
-    mail("Confirmación XV Armaris – " + v.nombre, `Nombre: ${v.nombre}\nRespuesta: ${v.asis}\nNúmero de personas: ${v.pers}` + (mesa ? `\nMesa: ${mesa}` : ""));
-    e.target.reset();
+    e.preventDefault(); const f = e.target, v = Object.fromEntries(new FormData(f)), msg = $("#rsvpMsg"), btn = f.querySelector("button");
+    const nombre = v.nombre.trim(), asis = v.asis, pers = asis === "si" ? +v.pers : 0;
+    if (!nombre || !asis) { msg.className = "fmsg err"; msg.textContent = "Escribe tu nombre y elige una opción."; return; }
+    msg.className = "fmsg"; msg.textContent = "";
+    if (!API) {
+      mail("Confirmación XV Armaris – " + nombre, `Nombre: ${nombre}\nRespuesta: ${asis === "si" ? "Sí asistiré" : "No podré asistir"}\nNúmero de personas: ${pers}` + (mesa ? `\nMesa: ${mesa}` : ""));
+      return;
+    }
+    busy(btn, true, "Enviando…");
+    send({ action: "rsvp", id: guest ? guest.id : "", nombre, asistencia: asis, personas: pers, mesa: mesa || "" })
+      .then(() => {
+        f.hidden = true; $("#rsvpThanks").hidden = false;
+        $("#thanksTxt").textContent = asis === "si"
+          ? `${nombre}, tu asistencia quedó confirmada para ${pers} persona${pers === 1 ? "" : "s"}. ¡Te espero!`
+          : `${nombre}, recibimos tu respuesta. ¡Gracias por avisar!`;
+      })
+      .catch(() => { msg.className = "fmsg err"; msg.textContent = "No se pudo enviar. Inténtalo de nuevo en un momento."; busy(btn, false, "✦ Confirmar asistencia"); });
   });
 
   // ====== Fotos (tocar para ampliar) ======
