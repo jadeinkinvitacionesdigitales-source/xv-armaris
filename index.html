@@ -147,7 +147,7 @@ p.cta b{font-family:var(--deco);font-size:26px;font-weight:700}
 .tile:active{transform:scale(.97)}
 
 .peek{position:absolute;z-index:5;pointer-events:none}
-.peek.olaf{width:92px;right:-14px;bottom:-58px;transform:rotate(-6deg)}
+.peek.olaf{width:86px;right:-12px;top:-56px;transform:rotate(6deg)}
 .peek.bruni{width:104px;left:-6px;top:-62px}
 
 .dress{display:flex;align-items:center;justify-content:center;gap:18px;margin:12px 0 4px}
@@ -155,6 +155,11 @@ p.cta b{font-family:var(--deco);font-size:26px;font-weight:700}
 .dress .f{font-family:var(--deco);font-size:30px;font-weight:700;color:var(--royal)}
 .dc{width:86%;max-width:320px;margin:20px auto 4px}
 .dc img{width:100%;filter:drop-shadow(0 6px 10px rgba(15,42,85,.25))}
+.banned{margin-top:22px;padding-top:18px;border-top:1px solid #d6e9fa}
+.sw{display:flex;justify-content:center;gap:clamp(14px,5vw,28px);margin-top:14px}
+.sw>div{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:var(--serif);font-weight:700;font-size:17px;color:var(--navy);width:84px;line-height:1.15}
+.sw span{position:relative;width:62px;height:62px;border-radius:50%;background:center/cover;border:3px solid #fff;box-shadow:0 0 0 1.5px #c9dff3,0 6px 14px rgba(15,42,85,.25)}
+.sw span::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:3px;background:#c62828;border-radius:2px;transform:translateX(-50%) rotate(45deg);box-shadow:0 0 0 1.5px #fff}
 .dcl{display:flex;justify-content:space-around;margin-top:10px;font-family:var(--deco);font-weight:700;font-size:16px;letter-spacing:.15em;color:var(--royal);text-transform:uppercase}
 .mesa-n{font-family:var(--deco);font-weight:700;font-size:64px;color:var(--royal);line-height:1;text-shadow:0 0 18px rgba(150,210,255,.9)}
 
@@ -332,6 +337,14 @@ dialog::backdrop{background:rgba(6,20,45,.7);backdrop-filter:blur(3px)}
       <img class="divisor" src="assets/divisor.webp" alt="" style="margin:6px auto 10px">
       <div class="dc">
         <img src="assets/dresscode.webp" alt="Silueta de traje formal y vestido largo de gala">
+      </div>
+      <div class="banned">
+        <p class="label">Colores prohibidos</p>
+        <div class="sw">
+          <div><span style="background-image:url(assets/color-celeste.webp)"></span>Celeste</div>
+          <div><span style="background-image:url(assets/color-plateado.webp)"></span>Plateado</div>
+          <div><span style="background-image:url(assets/color-azul.webp)"></span>Azul eléctrico</div>
+        </div>
       </div>
       <img class="peek olaf" src="assets/olaf.webp" alt="">
     </div>
